@@ -31,3 +31,53 @@ ogn_sim args:
 --file, -f: simulate traffic from selected APRS log file.
 ```
 
+### APRS server
+Parameters of simulated APRS are controlled by --port and --name options.
+Simulated server functionality is limited to:
+* full-feed (10152) stream, no filters are accepted,
+* server accepts TCP connections only, there is no uplink possible,
+* multiple TCP connections to full-feed port are allowed.
+
+Server won't send any packets when executed without options, but it is possible to connect to it:
+```
+$ ./ogn_sim 
+OGN APRS traffic simulator.
+APRS server OGNSIM started, listening on port: 10152
+Enter h - for help
+Enter command: APRS connection "SQ9PCB": started.
+Enter command: h
+ogn_sim commands:
+h: help,
+q: quit program,
+c: APRS clients list
+
+Enter command: c
+[{"conns", #PID<0.110.0>, {"SQ9PCB", "192.168.1.6:59790"}}]
+Enter command: q
+$
+```
+
+### Simulated objects
+Using --objs options it is possible to start selected number of simulated objects
+
+```
+$ ./ogn_sim -o 1000
+OGN APRS traffic simulator.
+APRS server OGNSIM started, listening on port: 10152
+Starting 1000 object(s)
+Enter h - for help
+```
+Those objects are simulated OGN Trackers hanging in the air over Kraków, but they are valid since their callsigns differ and reported time is progressing.
+
+### APRS log reply
+It is also possible to reply recorded APRS traffic using --file option:
+
+```
+$ ./ogn_sim -f logs/test_log.aprs.gz 
+OGN APRS traffic simulator.
+APRS server OGNSIM started, listening on port: 10152
+Starting logs/test_log.aprs.gz file
+Enter h - for help
+```
+
+Gzip compressed files are accepted.
