@@ -57,7 +57,12 @@ defmodule OGNSim.APRSConnection do
     new_packets = state.aprs_packets ++ [packet]
 
     if :erlang.iolist_size(new_packets) > 4096 do
-      :ok = :gen_tcp.send(state.socket, new_packets)
+      case :gen_tcp.send(state.socket, new_packets) do
+        :ok -> :ok
+        # During heavy traffic TCP connection could be disconnected before receiving :tcp_closed msg 
+        {:error, :closed} -> :ok
+      end
+
       {:noreply, %{state | last_tx_time: :erlang.system_time(:millisecond), aprs_packets: []}}
     else
       {:noreply, %{state | aprs_packets: new_packets}}
