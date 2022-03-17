@@ -4,14 +4,21 @@ defmodule APRSLog.Sender do
   @max_demand 10
   @tick_time_ms 1000
 
-  def start_link(out_file) do
-    {:ok, file} = File.open(out_file, [:write])
-    GenStage.start_link(__MODULE__, [file], name: __MODULE__)
+  def start_link(log_file_name) do
+    log_file =
+      if log_file_name != nil do
+        {:ok, file} = File.open(log_file_name, [:write])
+        file
+      else
+        nil
+      end
+
+    GenStage.start_link(__MODULE__, [log_file], name: __MODULE__)
   end
 
-  def init([file]) do
+  def init([log_file]) do
     :timer.send_interval(@tick_time_ms, :tick)
-    {:consumer, %{data: [], subscription: nil, file: file}}
+    {:consumer, %{data: [], subscription: nil, log_file: log_file}}
   end
 
   def handle_subscribe(:producer, _options, from, state) do
@@ -29,20 +36,21 @@ defmodule APRSLog.Sender do
 
   def handle_info(:tick, state) do
     [event | rest] = state.data
-    # IO.inspect("Rate: #{length(event)}")
+    #    IO.inspect("Rate: #{length(event)}")
 
     for e <- event do
       case e do
         :eof ->
           IO.puts("End of file.")
-          File.close(state.file)
+
+          if state.log_file != nil, do: File.close(state.log_file)
 
         line ->
-          aprs_line = {:aprs, line <> "\r\n"}
-
-          Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
-            for {pid, _} <- entries, do: send(pid, aprs_line)
-          end)
+          _aprs_line = {:aprs, line <> "\r\n"}
+          if state.log_file != nil, do: IO.write(state.log_file, line <> "\r\n")
+          # Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
+          #  for {pid, _} <- entries, do: send(pid, aprs_line)
+          # end)
       end
     end
 

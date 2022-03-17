@@ -24,7 +24,8 @@ defmodule OgnSim.MixProject do
   defp deps do
     [
       {:nimble_parsec, "~> 1.2"},
-      {:gen_stage, "~> 1.1"}
+      {:gen_stage, "~> 1.1"},
+      {:poison, "~> 5.0"}
     ]
   end
 
