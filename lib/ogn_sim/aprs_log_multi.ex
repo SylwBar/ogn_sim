@@ -9,6 +9,8 @@ defmodule APRSLog.Multi do
   end
 
   def init([stream_list]) do
+    :ets.new(:ogn_id_map, [:set, :protected, :named_table])
+    :ets.insert(:ogn_id_map, {:counter, 0})
     {:producer_consumer, stream_list}
   end
 
@@ -40,12 +42,17 @@ defmodule APRSLog.Multi do
   defp multiply_param_line(:eof, _stream_list), do: :eof
 
   defp generate_stream(stream, param, _line) do
-    stream_id = Map.get(stream, "id")
-    stream_lat_off = Map.get(stream, "lat_off")
-    stream_lon_off = Map.get(stream, "lon_off")
-    new_aprs_id = aprs_id_map(param.aprs_id, stream_id)
-    new_path = Enum.map(param.path, &aprs_id_map(&1, stream_id)) |> Enum.join(",")
-    new_dest_id = aprs_id_map(param.dest_id, stream_id)
+    stream_id =
+      case Map.get(stream, "id", nil) do
+        nil -> nil
+        id when is_integer(id) -> Integer.to_string(id, 16)
+      end
+
+    stream_lat_off = Map.get(stream, "lat_offset", 0)
+    stream_lon_off = Map.get(stream, "lon_offset", 0)
+    {new_aprs_id, ogn_id_map} = aprs_id_map(param.aprs_id, stream_id)
+    new_path = Enum.map(param.path, &aprs_path_map(&1, stream_id)) |> Enum.join(",")
+    new_dest_id = aprs_dest_map(param.dest_id, stream_id)
     time_str = APRS.sec_to_aprs_time_str(param.time)
 
     address_part =
@@ -58,27 +65,65 @@ defmodule APRSLog.Multi do
         new_lon = (param.lon + round(stream_lon_off * @lon_scale)) |> unwrap_lon()
         lat_str = APRS.lat_to_aprs_lat_str(new_lat)
         lon_str = APRS.lon_to_aprs_lon_str(new_lon)
-        address_part <> lat_str <> <<param.s1>> <> lon_str <> param.rest
+
+        new_rest =
+          case ogn_id_map do
+            nil -> param.rest
+            {ogn_id, map_id} -> String.replace(param.rest, ogn_id, map_id)
+          end
+
+        address_part <> lat_str <> <<param.s1>> <> lon_str <> new_rest
 
       _ ->
         address_part <> param.rest
     end
   end
 
-  defp unwrap_lat(lat) when lat > 90 * @lat_scale, do: 90 * @lat_scale
-  defp unwrap_lat(lat) when lat < -90 * @lat_scale, do: -90 * @lat_scale
+  defp unwrap_lat(lat) when lat > 90 * @lat_scale, do: unwrap_lat(180 * @lat_scale - lat)
+  defp unwrap_lat(lat) when lat < -90 * @lat_scale, do: unwrap_lat(-180 * @lat_scale - lat)
   defp unwrap_lat(lat), do: lat
 
   defp unwrap_lon(lon) when lon > 180 * @lon_scale, do: unwrap_lon(lon - 360 * @lon_scale)
   defp unwrap_lon(lon) when lon < -180 * @lon_scale, do: unwrap_lon(lon + 360 * @lon_scale)
   defp unwrap_lon(lon), do: lon
 
-  defp aprs_id_map(<<"GLIDERN", _::bytes>> = id, _stream_id), do: id
-  defp aprs_id_map("OGNSDR" = id, _stream_id), do: id
-  defp aprs_id_map("OGNTRK" = id, _stream_id), do: id
-  defp aprs_id_map("APRS" = id, _stream_id), do: id
-  defp aprs_id_map("TCPIP*" = id, _stream_id), do: id
-  defp aprs_id_map("qAC" = id, _stream_id), do: id
-  defp aprs_id_map("qAS" = id, _stream_id), do: id
-  defp aprs_id_map(aprs_id, _stream_id), do: aprs_id
+  defp get_ogn_id_map_stream(ogn_id, stream_id) do
+    get_ogn_id_map(ogn_id) <> stream_id
+  end
+
+  defp get_ogn_id_map(ogn_id) do
+    case :ets.lookup(:ogn_id_map, ogn_id) do
+      [{_ogn_id, map_id}] ->
+        map_id
+
+      [] ->
+        new_id =
+          :ets.update_counter(:ogn_id_map, :counter, {2, 1})
+          |> Integer.to_string(16)
+          |> String.pad_leading(5, "0")
+
+        :ets.insert(:ogn_id_map, {ogn_id, new_id})
+        new_id
+    end
+  end
+
+  defp aprs_id_map(aprs_id, nil), do: {aprs_id, nil}
+
+  defp aprs_id_map(<<"FLR", ogn_id::bytes-size(6)>>, stream_id) do
+    map_stream_id = get_ogn_id_map_stream(ogn_id, stream_id)
+    {"FLR" <> map_stream_id, {ogn_id, map_stream_id}}
+  end
+
+  defp aprs_id_map(<<"OGN", ogn_id::bytes-size(6)>>, stream_id) do
+    map_stream_id = get_ogn_id_map_stream(ogn_id, stream_id)
+    {"OGN" <> map_stream_id, {ogn_id, map_stream_id}}
+  end
+
+  defp aprs_id_map(aprs_id, stream_id), do: {aprs_id <> stream_id, nil}
+
+  defp aprs_path_map(aprs_id, _stream_id), do: aprs_id
+
+  defp aprs_dest_map(aprs_id, nil), do: aprs_id
+  defp aprs_dest_map(<<"GLIDERN", _::bytes>> = aprs_id, _stream_id), do: aprs_id
+  defp aprs_dest_map(aprs_id, stream_id), do: aprs_id <> stream_id
 end
