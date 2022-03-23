@@ -24,11 +24,13 @@ CLI options:
 ```
 $ ./ogn_sim -h
 ogn_sim args:
---help, -h: print help,
---port, -p: APRS server listen TCP port, default: 10152,
---name, -n: APRS server name, default: OGNSIM,
---objs, -o: number of simulated OGN objects, default: 0,
---file, -f: simulate traffic from selected APRS log file.
+--help,  -h: print help,
+--port,  -p: APRS server listen TCP port, default: 10152,
+--name,  -n: APRS server name, default: OGNSIM,
+--objs,  -o: number of simulated OGN objects, default: 0,
+--file,  -f: simulate traffic from selected APRS log file.
+--multi, -m: multipy traffic from --file using provided JSON schema,
+--log,   -l: log output to provided file.
 ```
 
 ### APRS server
@@ -81,3 +83,7 @@ Enter h - for help
 ```
 
 Gzip compressed files are accepted.
+
+### APRS log multiplication
+Log multiplication allows easy creation of artificial APRS traffic.
+There is separate document for this option: multi.md
