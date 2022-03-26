@@ -109,21 +109,37 @@ defmodule APRSLog.Multi do
 
   defp aprs_id_map(aprs_id, nil), do: {aprs_id, nil}
 
-  defp aprs_id_map(<<"FLR", ogn_id::bytes-size(6)>>, stream_id) do
-    map_stream_id = get_ogn_id_map_stream(ogn_id, stream_id)
-    {"FLR" <> map_stream_id, {ogn_id, map_stream_id}}
-  end
+  defp aprs_id_map(<<"FLR", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("FLR", ogn_id, stream_id)
 
-  defp aprs_id_map(<<"OGN", ogn_id::bytes-size(6)>>, stream_id) do
-    map_stream_id = get_ogn_id_map_stream(ogn_id, stream_id)
-    {"OGN" <> map_stream_id, {ogn_id, map_stream_id}}
-  end
+  defp aprs_id_map(<<"ICA", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("ICA", ogn_id, stream_id)
+
+  defp aprs_id_map(<<"OGN", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("OGN", ogn_id, stream_id)
+
+  defp aprs_id_map(<<"PAW", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("PAW", ogn_id, stream_id)
+
+  defp aprs_id_map(<<"SKY", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("SKY", ogn_id, stream_id)
+
+  defp aprs_id_map(<<"FMT", ogn_id::bytes-size(6)>>, stream_id),
+    do: aprs_id_map2("FMT", ogn_id, stream_id)
 
   defp aprs_id_map(aprs_id, stream_id), do: {aprs_id <> stream_id, nil}
+
+  def aprs_id_map2(ogn_id_prefix, ogn_id, stream_id) do
+    map_stream_id = get_ogn_id_map_stream(ogn_id, stream_id)
+    {ogn_id_prefix <> map_stream_id, {ogn_id, map_stream_id}}
+  end
 
   defp aprs_path_map(aprs_id, _stream_id), do: aprs_id
 
   defp aprs_dest_map(aprs_id, nil), do: aprs_id
   defp aprs_dest_map(<<"GLIDERN", _::bytes>> = aprs_id, _stream_id), do: aprs_id
+  defp aprs_dest_map(<<"SafeSky", _::bytes>> = aprs_id, _stream_id), do: aprs_id
+  defp aprs_dest_map(<<"NAVITER", _::bytes>> = aprs_id, _stream_id), do: aprs_id
+  defp aprs_dest_map(<<"FLYMASTER", _::bytes>> = aprs_id, _stream_id), do: aprs_id
   defp aprs_dest_map(aprs_id, stream_id), do: aprs_id <> stream_id
 end
