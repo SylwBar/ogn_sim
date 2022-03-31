@@ -8,6 +8,7 @@ defmodule APRSLog.Reader do
 
       {:error, reason} ->
         IO.puts("Can't open file #{file_name}: #{reason}")
+        System.halt(0)
         {:error, reason}
     end
   end
@@ -29,16 +30,37 @@ defmodule APRSLog.Reader do
         out_lines ++ [:eof]
 
       line ->
-        trim_line = String.trim_trailing(line, "\n")
+        trim_line = trim_endl(line)
 
-        time_line =
-          case APRS.get_time(trim_line) do
-            {:ok, time} -> {:ok, time, trim_line}
-            :comment -> {:comment, trim_line}
-            :error -> {:error, trim_line}
+        param_line =
+          case APRS.get_params(trim_line) do
+            {:ok, params, rest} ->
+              case params.type do
+                "/" ->
+                  case APRS.get_aprs_position(rest) do
+                    {:ok, {lat, lon, s1}, pos_rest} ->
+                      {:ok, Map.merge(params, %{lat: lat, lon: lon, s1: s1, rest: pos_rest}),
+                       trim_line}
+
+                    _ ->
+                      {:error, trim_line}
+                      # {:ok, Map.put(params, :rest, rest), trim_line}
+                  end
+
+                _ ->
+                  {:ok, Map.put(params, :rest, rest), trim_line}
+              end
+
+            :comment ->
+              {:comment, trim_line}
+
+            :error ->
+              {:error, trim_line}
           end
 
-        read_lines(n - 1, file, out_lines ++ [time_line])
+        read_lines(n - 1, file, out_lines ++ [param_line])
     end
   end
+
+  defp trim_endl(line), do: String.trim_trailing(line, "\n")
 end

@@ -28,39 +28,39 @@ defmodule APRSLog.Buffer do
   defp process(lines, buff_time, buff_lines), do: process(lines, buff_time, buff_lines, [])
 
   # processing start - buffer time nil
-  defp process([{:ok, time, line} | rest], nil, [], out_events) do
-    process(rest, time, [line], out_events)
+  defp process([{:ok, params, _line} = param_line | rest], nil, [], out_events) do
+    process(rest, params.time, [param_line], out_events)
   end
 
   # processing in the middle - received line matching current buffer time
-  defp process([{:ok, time, line} | rest], buff_time, buff_lines, out_events)
-       when time <= buff_time do
-    process(rest, buff_time, buff_lines ++ [line], out_events)
+  defp process([{:ok, params, _line} = param_line | rest], buff_time, buff_lines, out_events)
+       when params.time <= buff_time do
+    process(rest, buff_time, buff_lines ++ [param_line], out_events)
   end
 
   # processing in the middle - received line ahead of validity window
-  defp process([{:ok, time, line} | rest], buff_time, buff_lines, out_events)
-       when time - buff_time >= @validity_window_sec do
-    process(rest, buff_time, buff_lines ++ [line], out_events)
+  defp process([{:ok, params, _line} = param_line | rest], buff_time, buff_lines, out_events)
+       when params.time - buff_time >= @validity_window_sec do
+    process(rest, buff_time, buff_lines ++ [param_line], out_events)
   end
 
   # processing in the middle - received line time ahead of current buffer time
-  defp process([{:ok, time, line} | rest], buff_time, buff_lines, out_events) do
-    empty_events_num = time - buff_time - 1
+  defp process([{:ok, params, _line} = param_line | rest], buff_time, buff_lines, out_events) do
+    empty_events_num = params.time - buff_time - 1
     empty_events = List.duplicate([], empty_events_num)
-    process(rest, time, [line], out_events ++ [buff_lines] ++ empty_events)
+    process(rest, params.time, [param_line], out_events ++ [buff_lines] ++ empty_events)
   end
 
-  # processing special events: APRS comment
+  # processing special event: APRS comment
   defp process([{:comment, _line} | rest], buff_time, buff_lines, out_events) do
     # Ignore comments
     process(rest, buff_time, buff_lines, out_events)
   end
 
-  # processing special events: APRS errors
-  defp process([{:error, line} | rest], buff_time, buff_lines, out_events) do
-    # Add to buffer at current time
-    process(rest, buff_time, buff_lines ++ [line], out_events)
+  # processing special event: APRS parsing error
+  defp process([{:error, _line} | rest], buff_time, buff_lines, out_events) do
+    # Ignore errors
+    process(rest, buff_time, buff_lines, out_events)
   end
 
   # processing special events: end of file

@@ -6,8 +6,16 @@ defmodule OgnSim do
     try do
       {opt_list, _arg_list} =
         OptionParser.parse!(argv,
-          strict: [help: :boolean, port: :integer, name: :string, objs: :integer, file: :string],
-          aliases: [h: :help, p: :port, n: :name, o: :objs, f: :file]
+          strict: [
+            help: :boolean,
+            port: :integer,
+            name: :string,
+            objs: :integer,
+            file: :string,
+            multi: :string,
+            log: :string
+          ],
+          aliases: [h: :help, p: :port, n: :name, o: :objs, f: :file, m: :multi, l: :log]
         )
 
       opts = :proplists.to_map(opt_list)
@@ -21,12 +29,33 @@ defmodule OgnSim do
         name = Map.get(opts, :name, @def_aprs_server_name)
         objs = Map.get(opts, :objs, 0)
         file = Map.get(opts, :file)
+        multi = Map.get(opts, :multi)
+        log = Map.get(opts, :log)
 
-        {:ok, %{port: port, name: name, objs: objs, file: file}}
+        if multi != nil and file == nil do
+          raise "Error: --multi used without --file selected."
+        end
+
+        multi_opt =
+          if multi != nil do
+            File.read!(multi) |> Poison.decode!()
+          else
+            nil
+          end
+
+        {:ok, %{port: port, name: name, objs: objs, file: file, multi: multi_opt, log: log}}
       end
     rescue
+      e in File.Error ->
+        IO.puts("Can't access file: #{e.path}")
+        :error
+
       e in OptionParser.ParseError ->
         IO.puts(e.message)
+        :error
+
+      _e in Poison.ParseError ->
+        IO.puts("Can't parse multi JSON")
         :error
 
       e in RuntimeError ->
@@ -38,11 +67,13 @@ defmodule OgnSim do
   defp print_help() do
     IO.puts("""
     ogn_sim args:
-    --help, -h: print help,
-    --port, -p: APRS server listen TCP port, default: #{@def_aprs_server_port},
-    --name, -n: APRS server name, default: #{@def_aprs_server_name},
-    --objs, -o: number of simulated OGN objects, default: 0,
-    --file, -f: simulate traffic from selected APRS log file.
+    --help,  -h: print help,
+    --port,  -p: APRS server listen TCP port, default: #{@def_aprs_server_port},
+    --name,  -n: APRS server name, default: #{@def_aprs_server_name},
+    --objs,  -o: number of simulated OGN objects, default: 0,
+    --file,  -f: simulate traffic from selected APRS log file,
+    --multi, -m: multipy traffic from --file using provided JSON schema.
+    --log,   -l: log output to provided file
     """)
   end
 
@@ -69,9 +100,11 @@ defmodule OgnSim do
       IO.puts("Starting #{config.file} file")
       {:ok, log_reader} = APRSLog.Reader.start_link(config.file)
       {:ok, log_buffer} = APRSLog.Buffer.start_link()
-      {:ok, log_sender} = APRSLog.Sender.start_link("debug.txt")
+      {:ok, log_multi} = APRSLog.Multi.start_link(config.multi)
+      {:ok, log_sender} = APRSLog.Sender.start_link(config.log)
       GenStage.sync_subscribe(log_buffer, to: log_reader)
-      GenStage.sync_subscribe(log_sender, to: log_buffer)
+      GenStage.sync_subscribe(log_multi, to: log_buffer)
+      GenStage.sync_subscribe(log_sender, to: log_multi)
     end
 
     IO.puts("Enter h - for help")
