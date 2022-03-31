@@ -3,9 +3,10 @@
 Multi option (--multi/-m) allows easy multiplication of APRS packets read from APRS log file. This option could be useful for stress testing. 
 
 ## Example file
-This short introduction explains how example APRS log file (examples/ex1.aprs) could be multiplied in various ways.
+This short introduction explains how example APRS log file could be multiplied in various ways.
 
-Example log contains:
+Example log content:
+examples/ex1.aprs: 
 
 ```
 # aprsc 2.1.5-g8af3cdc 7 May 2021 03:01:26 GMT GLIDERN5 88.99.111.134:10152
@@ -27,7 +28,7 @@ Multi option is controlled by JSON multi file. Multi file should be list of maps
 Each stream takes data from input APRS file. 
 
 ### Basic stream copy
-To understand the idea minimal multi file is presented.
+To understand the idea, minimal multi file is presented.
 
 examples/multi1.json:
 
@@ -92,6 +93,10 @@ OGN identifiers can't be created this way, as their length is constant. There ar
 Ogn_sim dynamically counts OGN type identifiers and maintains OGN mapping table.
 Additionally idxxxxxxxx string in comment section is updated too.
 
+It is possible to create 16 streams.
+Tag: "id" accepts number from 0 to 15.
+
+
 ### Stream copy with fully modified identifiers
 
 Mapping presented in previous chapter is almost correct, but there is a chance that new OGN id created from internal counter will collide with real OGN id.
@@ -126,7 +131,7 @@ OGN000011>OGFLR,qAS,EPZR1:/030131h5010.20N/01915.30Eg000/002/A=000335 !W57! id1F
 
 ### Stream copy with fully modified identifiers and moved objects
 
-It is possible to move objects from selected stream by selected offset.
+It is possible to geographically move objects of selected stream by selected offset.
 Example multi file, examples/multi4.json:
 ```
 [
@@ -153,7 +158,7 @@ OGN000010>OGFLR,qAS,EPZR0:/030131h5010.20N/01915.30Eg000/002/A=000335 !W57! id1F
 OGN000011>OGFLR,qAS,EPZR1:/030131h5010.20N/10915.30Eg000/002/A=000335 !W57! id1F000011 +000fpm +0.0rot 52.5dB -4.0kHz gps3x5
 ```
 
-It is also possible to update latitude of objects
+It is also possible to update latitude of objects.
 Example multi file, examples/multi5.json:
 ```
 [
@@ -182,5 +187,3 @@ OGN000011>OGFLR,qAS,EPZR1:/030131h4010.20N/10915.30Eg000/002/A=000335 !W57! id1F
 
 Please note that adding offset to latitude will introduce distortion in object paths.
 Using "lon_offset" should be preffered - adding any offset to object longitude preserves all path parameters.
-
-
