@@ -46,11 +46,12 @@ defmodule APRSLog.Sender do
           if state.log_file != nil, do: File.close(state.log_file)
 
         line ->
-          _aprs_line = {:aprs, line <> "\r\n"}
+          aprs_line = {:aprs, line <> "\r\n"}
           if state.log_file != nil, do: IO.write(state.log_file, line <> "\r\n")
-          # Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
-          #  for {pid, _} <- entries, do: send(pid, aprs_line)
-          # end)
+
+          Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
+            for {pid, _} <- entries, do: send(pid, aprs_line)
+          end)
       end
     end
 
