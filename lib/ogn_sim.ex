@@ -133,9 +133,17 @@ defmodule OgnSim do
   defp print_connections() do
     conns =
       Registry.select(Registry.ConnectionsTCP, [
-        {{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}
+        {{:"$1", :"$2", :"$3"}, [], [:"$3"]}
       ])
 
-    IO.inspect(conns)
+    if conns == [] do
+      IO.puts("No APRS client connections.")
+    else
+      IO.puts("APRS client(s):")
+
+      Enum.map(conns, fn {client_id, client_ip} ->
+        IO.puts("id: #{client_id}, IP: #{client_ip}")
+      end)
+    end
   end
 end
