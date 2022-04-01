@@ -46,7 +46,7 @@ $ ./ogn_sim
 OGN APRS traffic simulator.
 APRS server OGNSIM started, listening on port: 10152
 Enter h - for help
-Enter command: APRS connection "SQ9PCB": started.
+Enter command: APRS connection "CORE-1": started.
 Enter command: h
 ogn_sim commands:
 h: help,
@@ -54,7 +54,8 @@ q: quit program,
 c: APRS clients list
 
 Enter command: c
-[{"conns", #PID<0.110.0>, {"SQ9PCB", "192.168.1.6:59790"}}]
+APRS client(s):
+id: CORE-1, IP: 192.168.1.11:37224
 Enter command: q
 $
 ```
