@@ -21,14 +21,16 @@ defmodule OGNSim.Object do
     ogn_id_str = "id07" <> ogn_id
     aprs_id_str = "OGN" <> ogn_id
 
-    # OGN123456>OGNTRK,qAS,FUZO2:/123456h5001.02N/02004.05E'000/000/A=001234 !W11! id07EDD94C +000fpm 0.0rot 10.0dB 0e +1.0kHz gps3x3
+    # OGN123456>OGNTRK,qAS,EPKA:/123456h5001.02N/02004.05E'000/000/A=001234 !W11! id07EDD94C +000fpm 0.0rot 10.0dB 0e +1.0kHz gps3x3
 
-    aprs_packet =
-      {:aprs,
-       "#{aprs_id_str}>OGNTRK,qAS,EPKA:/#{time_str}5001.02N/02004.05E'000/000/A=000843 !W11! #{ogn_id_str} +000fpm 0.0rot 10.0dB 0e +1.0kHz gps3x3\r\n"}
+    line_endl =
+      "#{aprs_id_str}>OGNTRK,qAS,EPKA:/#{time_str}5001.02N/02004.05E'000/000/A=001234 !W11! #{ogn_id_str} +000fpm 0.0rot 10.0dB 0e +1.0kHz gps3x3\r\n"
+
+    :ets.update_counter(:ogn_sim_rates, :pkt_counter, {2, 1})
+    :ets.update_counter(:ogn_sim_rates, :pkt_len_counter, {2, byte_size(line_endl)})
 
     Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
-      for {pid, _} <- entries, do: send(pid, aprs_packet)
+      for {pid, _} <- entries, do: send(pid, {:aprs, line_endl})
     end)
 
     {:noreply, state}

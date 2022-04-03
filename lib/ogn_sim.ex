@@ -13,9 +13,19 @@ defmodule OgnSim do
             objs: :integer,
             file: :string,
             multi: :string,
-            log: :string
+            log: :string,
+            rate: :boolean
           ],
-          aliases: [h: :help, p: :port, n: :name, o: :objs, f: :file, m: :multi, l: :log]
+          aliases: [
+            h: :help,
+            p: :port,
+            n: :name,
+            o: :objs,
+            f: :file,
+            m: :multi,
+            l: :log,
+            r: :rate
+          ]
         )
 
       opts = :proplists.to_map(opt_list)
@@ -31,6 +41,7 @@ defmodule OgnSim do
         file = Map.get(opts, :file)
         multi = Map.get(opts, :multi)
         log = Map.get(opts, :log)
+        rate = Map.get(opts, :rate, false)
 
         if multi != nil and file == nil do
           raise "Error: --multi used without --file selected."
@@ -43,7 +54,8 @@ defmodule OgnSim do
             nil
           end
 
-        {:ok, %{port: port, name: name, objs: objs, file: file, multi: multi_opt, log: log}}
+        {:ok,
+         %{port: port, name: name, objs: objs, file: file, multi: multi_opt, log: log, rate: rate}}
       end
     rescue
       e in File.Error ->
@@ -72,8 +84,9 @@ defmodule OgnSim do
     --name,  -n: APRS server name, default: #{@def_aprs_server_name},
     --objs,  -o: number of simulated OGN objects, default: 0,
     --file,  -f: simulate traffic from selected APRS log file,
-    --multi, -m: multipy traffic from --file using provided JSON schema.
-    --log,   -l: log output to provided file
+    --multi, -m: multipy traffic from --file using provided JSON schema,
+    --log,   -l: log output to provided file,
+    --rate,  -r: show packet rates.
     """)
   end
 
@@ -82,12 +95,19 @@ defmodule OgnSim do
     ogn_sim commands:
     h: help,
     q: quit program,
-    c: APRS clients list
+    c: APRS clients list,
+    r: toggle packet rate display.
     """)
   end
 
   def run(config) do
+    :ets.new(:ogn_sim_rates, [:set, :public, :named_table])
+    :ets.insert(:ogn_sim_rates, {:pkt_counter, 0})
+    :ets.insert(:ogn_sim_rates, {:pkt_len_counter, 0})
+    :ets.insert(:ogn_sim_rates, {:show, config.rate})
+
     IO.puts("OGN APRS traffic simulator.")
+
     OGNSim.APRSServer.start(config.port, config.name)
     OGNSim.ObjectTimer.start()
 
@@ -107,6 +127,7 @@ defmodule OgnSim do
       GenStage.sync_subscribe(log_sender, to: log_multi)
     end
 
+    :timer.apply_interval(1000, OgnSim, :handle_rate, [])
     IO.puts("Enter h - for help")
     command_loop()
   end
@@ -122,6 +143,10 @@ defmodule OgnSim do
 
       "c" ->
         print_connections()
+        command_loop()
+
+      "r" ->
+        toggle_rate_show()
         command_loop()
 
       cmd ->
@@ -144,6 +169,29 @@ defmodule OgnSim do
       Enum.map(conns, fn {client_id, client_ip} ->
         IO.puts("id: #{client_id}, IP: #{client_ip}")
       end)
+    end
+  end
+
+  defp toggle_rate_show() do
+    case :ets.lookup(:ogn_sim_rates, :show) do
+      [show: false] ->
+        IO.puts("Rate show enabled.")
+        :ets.insert(:ogn_sim_rates, {:show, true})
+
+      [show: true] ->
+        IO.puts("Rate show disabled.")
+        :ets.insert(:ogn_sim_rates, {:show, false})
+    end
+  end
+
+  def handle_rate() do
+    [pkt_counter: pkt_counter] = :ets.lookup(:ogn_sim_rates, :pkt_counter)
+    [pkt_len_counter: pkt_len_counter] = :ets.lookup(:ogn_sim_rates, :pkt_len_counter)
+    :ets.insert(:ogn_sim_rates, {:pkt_counter, 0})
+    :ets.insert(:ogn_sim_rates, {:pkt_len_counter, 0})
+
+    if :ets.lookup(:ogn_sim_rates, :show) == [show: true] do
+      IO.puts("Rate: pkts/sec: #{pkt_counter}, \tpkt_bytes/sec: #{pkt_len_counter}")
     end
   end
 end

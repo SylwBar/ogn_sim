@@ -36,7 +36,7 @@ defmodule APRSLog.Sender do
 
   def handle_info(:tick, state) do
     [event | rest] = state.data
-    #    IO.inspect("Rate: #{length(event)}")
+    # IO.inspect("Rate: #{length(event)}")
 
     for e <- event do
       case e do
@@ -46,11 +46,14 @@ defmodule APRSLog.Sender do
           if state.log_file != nil, do: File.close(state.log_file)
 
         line ->
-          aprs_line = {:aprs, line <> "\r\n"}
-          if state.log_file != nil, do: IO.write(state.log_file, line <> "\r\n")
+          line_endl = line <> "\r\n"
+          if state.log_file != nil, do: IO.write(state.log_file, line_endl)
+
+          :ets.update_counter(:ogn_sim_rates, :pkt_counter, {2, 1})
+          :ets.update_counter(:ogn_sim_rates, :pkt_len_counter, {2, byte_size(line_endl)})
 
           Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
-            for {pid, _} <- entries, do: send(pid, aprs_line)
+            for {pid, _} <- entries, do: send(pid, {:aprs, line_endl})
           end)
       end
     end
