@@ -90,4 +90,14 @@ Gzip compressed files are accepted.
 
 ### APRS log multiplication
 Log multiplication allows easy creation of artificial APRS traffic.
-There is separate document for this option: multi.md
+
+```
+$ ./ogn_sim -f logs/test_log.aprs.gz -m examples/multi4.json
+OGN APRS traffic simulator.
+APRS server OGNSIM started, listening on port: 10152
+Starting logs/test_log.aprs.gz file
+Enter h - for help
+```
+
+Multi option is documented multi.md file.
+
