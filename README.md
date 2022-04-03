@@ -9,7 +9,8 @@ Generated traffic could composed of:
 Main purpose of the tool is GAT Core server performance testing, but it could be used for testing selected OGN components.
 
 ## Compiling
-Erlang and Elixir must be installed, in ogn_sim repository following commands should be executed:
+Erlang (>=22) and Elixir (>=1.11) must be installed.
+Following commands should be executed in repository folder:
 
 ```
 $ mix deps.get
@@ -28,9 +29,10 @@ ogn_sim args:
 --port,  -p: APRS server listen TCP port, default: 10152,
 --name,  -n: APRS server name, default: OGNSIM,
 --objs,  -o: number of simulated OGN objects, default: 0,
---file,  -f: simulate traffic from selected APRS log file.
+--file,  -f: simulate traffic from selected APRS log file,
 --multi, -m: multipy traffic from --file using provided JSON schema,
---log,   -l: log output to provided file.
+--log,   -l: log output to provided file,
+--rate,  -r: show packet rates.
 ```
 
 ### APRS server
@@ -51,7 +53,8 @@ Enter command: h
 ogn_sim commands:
 h: help,
 q: quit program,
-c: APRS clients list
+c: APRS clients list,
+r: toggle packet rate display.
 
 Enter command: c
 APRS client(s):
@@ -87,4 +90,14 @@ Gzip compressed files are accepted.
 
 ### APRS log multiplication
 Log multiplication allows easy creation of artificial APRS traffic.
-There is separate document for this option: multi.md
+
+```
+$ ./ogn_sim -f logs/test_log.aprs.gz -m examples/multi4.json
+OGN APRS traffic simulator.
+APRS server OGNSIM started, listening on port: 10152
+Starting logs/test_log.aprs.gz file
+Enter h - for help
+```
+
+Multi option is documented multi.md file.
+
