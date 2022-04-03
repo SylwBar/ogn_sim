@@ -4,7 +4,7 @@ defmodule APRSLog.Sender do
   @max_demand 10
   @tick_time_ms 1000
 
-  def start_link(log_file_name) do
+  def start_link(log_file_name, counters_tid) do
     log_file =
       if log_file_name != nil do
         {:ok, file} = File.open(log_file_name, [:write])
@@ -13,12 +13,12 @@ defmodule APRSLog.Sender do
         nil
       end
 
-    GenStage.start_link(__MODULE__, [log_file], name: __MODULE__)
+    GenStage.start_link(__MODULE__, [log_file, counters_tid], name: __MODULE__)
   end
 
-  def init([log_file]) do
+  def init([log_file, counters_tid]) do
     :timer.send_interval(@tick_time_ms, :tick)
-    {:consumer, %{data: [], subscription: nil, log_file: log_file}}
+    {:consumer, %{data: [], subscription: nil, log_file: log_file, counters_tid: counters_tid}}
   end
 
   def handle_subscribe(:producer, _options, from, state) do
@@ -49,8 +49,8 @@ defmodule APRSLog.Sender do
           line_endl = line <> "\r\n"
           if state.log_file != nil, do: IO.write(state.log_file, line_endl)
 
-          :ets.update_counter(:ogn_sim_rates, :pkt_counter, {2, 1})
-          :ets.update_counter(:ogn_sim_rates, :pkt_len_counter, {2, byte_size(line_endl)})
+          :ets.update_counter(state.counters_tid, :pkt_counter, {2, 1})
+          :ets.update_counter(state.counters_tid, :pkt_len_counter, {2, byte_size(line_endl)})
 
           Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
             for {pid, _} <- entries, do: send(pid, {:aprs, line_endl})

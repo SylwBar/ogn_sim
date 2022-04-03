@@ -3,9 +3,10 @@ defmodule OGNSim.Object do
   require Logger
 
   @impl true
-  def init([id]) do
+  def init([id, counters_tid]) do
     Registry.register(Registry.Objects, "objects", nil)
-    {:ok, %{id: id}}
+
+    {:ok, %{id: id, counters_tid: counters_tid}}
   end
 
   @impl true
@@ -26,8 +27,8 @@ defmodule OGNSim.Object do
     line_endl =
       "#{aprs_id_str}>OGNTRK,qAS,EPKA:/#{time_str}5001.02N/02004.05E'000/000/A=001234 !W11! #{ogn_id_str} +000fpm 0.0rot 10.0dB 0e +1.0kHz gps3x3\r\n"
 
-    :ets.update_counter(:ogn_sim_rates, :pkt_counter, {2, 1})
-    :ets.update_counter(:ogn_sim_rates, :pkt_len_counter, {2, byte_size(line_endl)})
+    :ets.update_counter(state.counters_tid, :pkt_counter, {2, 1})
+    :ets.update_counter(state.counters_tid, :pkt_len_counter, {2, byte_size(line_endl)})
 
     Registry.dispatch(Registry.ConnectionsTCP, "conns", fn entries ->
       for {pid, _} <- entries, do: send(pid, {:aprs, line_endl})
@@ -38,7 +39,7 @@ defmodule OGNSim.Object do
 
   # -----------------------------
 
-  def start(id) do
-    GenServer.start(__MODULE__, [id])
+  def start(id, counters_tid) do
+    GenServer.start(__MODULE__, [id, counters_tid])
   end
 end

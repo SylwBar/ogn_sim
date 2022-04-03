@@ -106,6 +106,8 @@ defmodule OgnSim do
     :ets.insert(:ogn_sim_rates, {:pkt_len_counter, 0})
     :ets.insert(:ogn_sim_rates, {:show, config.rate})
 
+    counters_tid = :ets.whereis(:ogn_sim_rates)
+
     IO.puts("OGN APRS traffic simulator.")
 
     OGNSim.APRSServer.start(config.port, config.name)
@@ -113,7 +115,7 @@ defmodule OgnSim do
 
     if config.objs > 0 do
       IO.puts("Starting #{config.objs} object(s)")
-      for obj_id <- 1..config.objs, do: OGNSim.Object.start(obj_id)
+      for obj_id <- 1..config.objs, do: OGNSim.Object.start(obj_id, counters_tid)
     end
 
     if config.file != nil do
@@ -121,7 +123,7 @@ defmodule OgnSim do
       {:ok, log_reader} = APRSLog.Reader.start_link(config.file)
       {:ok, log_buffer} = APRSLog.Buffer.start_link()
       {:ok, log_multi} = APRSLog.Multi.start_link(config.multi)
-      {:ok, log_sender} = APRSLog.Sender.start_link(config.log)
+      {:ok, log_sender} = APRSLog.Sender.start_link(config.log, counters_tid)
       GenStage.sync_subscribe(log_buffer, to: log_reader)
       GenStage.sync_subscribe(log_multi, to: log_buffer)
       GenStage.sync_subscribe(log_sender, to: log_multi)
@@ -191,7 +193,7 @@ defmodule OgnSim do
     :ets.insert(:ogn_sim_rates, {:pkt_len_counter, 0})
 
     if :ets.lookup(:ogn_sim_rates, :show) == [show: true] do
-      IO.puts("Rate: pkts/sec: #{pkt_counter}, \tpkt_bytes/sec: #{pkt_len_counter}")
+      IO.puts("Rate: pkts/sec: #{pkt_counter}, \tbytes/sec: #{pkt_len_counter}")
     end
   end
 end
